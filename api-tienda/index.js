@@ -2,6 +2,8 @@ import express, { json } from "express";
 import productRoute from "./routes/products.js";
 import cartRouter from "./routes/carts.js";
 import paymentRouter from "./routes/payments.js";
+import authRouter from "./routes/auth.js";
+
 const app = express();
 
 app.disable("x-powered-by");
@@ -11,8 +13,10 @@ const PORT = process.env.PORT || 3000;
 
 // Rutas 
 app.use('/products', productRoute);
-app.use('/cart', cartRouter); 
+app.use('/cart', cartRouter);
 app.use('/payments', paymentRouter);
+app.use('/auth', authRouter);
+
 
 // Midleware para manejo de rutas inexistentes 
 app.use((req, res) => {
