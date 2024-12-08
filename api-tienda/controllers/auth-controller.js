@@ -13,7 +13,7 @@ export class AuthController {
         const { success, error } = validateUserSchema(data) // validamos los datos del usuario
 
         if (!success) {
-            res.status(400).json({
+            return res.status(400).json({
                 message: JSON.parse(error.message)
             })
         } // si los datos no son válidos, retornamos un error

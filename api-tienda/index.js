@@ -1,19 +1,20 @@
 import express, { json } from "express";
-import cors from "cors"; 
+import cors from "cors";
 import productRoute from "./routes/products.js";
 import cartRouter from "./routes/carts.js";
 import paymentRouter from "./routes/payments.js";
 import authRouter from "./routes/auth.js";
 import { inventoryController } from "./controllers/inventory-controller.js";
 import inventoryRouter from "./routes/inventory.js";
+import reportsRouter from "./routes/reports.js";
 
 const app = express();
 
 
 app.use(cors({
-    origin: '*', 
+    origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-    allowedHeaders: ['Content-Type', 'Authorization'], 
+    allowedHeaders: ['Content-Type', 'Authorization'],
 }));
 
 app.disable("x-powered-by");
@@ -27,6 +28,7 @@ app.use('/cart', cartRouter);
 app.use('/payments', paymentRouter);
 app.use('/auth', authRouter);
 app.use('/inventory', inventoryRouter);
+app.use('/reports', reportsRouter);
 
 // Middleware para manejo de rutas inexistentes
 app.use((req, res) => {
