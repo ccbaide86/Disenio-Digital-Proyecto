@@ -3,6 +3,8 @@ import productRoute from "./routes/products.js";
 import cartRouter from "./routes/carts.js";
 import paymentRouter from "./routes/payments.js";
 import authRouter from "./routes/auth.js";
+import { inventoryController } from "./controllers/inventory-controller.js";
+import inventoryRouter from "./routes/inventory.js";
 
 const app = express();
 
@@ -16,6 +18,7 @@ app.use('/products', productRoute);
 app.use('/cart', cartRouter);
 app.use('/payments', paymentRouter);
 app.use('/auth', authRouter);
+app.use('/inventory',inventoryRouter)
 
 
 // Midleware para manejo de rutas inexistentes 
