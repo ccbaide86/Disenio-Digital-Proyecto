@@ -2,9 +2,9 @@ const isAdmin = (req, res, next) => {
     try {
 
         if (req.params.rol !== 'administrador') {
-            
+            const rol = req.params.rol
             return res.status(403).json({
-                message: 'No tiene permisos para acceder a esta ruta',
+                message: `No tiene permisos para acceder a esta ruta, su rol es: ${rol}`,
             });
         }
         next();
