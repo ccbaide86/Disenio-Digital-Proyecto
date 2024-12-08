@@ -15,7 +15,9 @@ const authMiddleware = (req, res, next) => {
 
     try {
         const decoded = jwt.verify(cleanToken, process.env.SECRET_KEY); // verificamos el token
-        req.params.rol = decoded.role; // obtenemos el rol del usuario
+        
+        req.params.rol = decoded.data.rol; // obtenemos el rol del usuario
+       
         next(); // continuamos
     }
     catch (error) {
