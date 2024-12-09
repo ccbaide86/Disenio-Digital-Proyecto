@@ -4,7 +4,6 @@ import productRoute from "./routes/products.js";
 import cartRouter from "./routes/carts.js";
 import paymentRouter from "./routes/payments.js";
 import authRouter from "./routes/auth.js";
-import { inventoryController } from "./controllers/inventory-controller.js";
 import inventoryRouter from "./routes/inventory.js";
 import reportsRouter from "./routes/reports.js";
 

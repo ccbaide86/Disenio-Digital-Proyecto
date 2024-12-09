@@ -9,8 +9,6 @@ const userSchema = z.object(
         }),
         "correo": z.string().email({
             message: "El email no es válido"
-        }).endsWith('example.com', {
-            message: "El email debe ser de un dominio válido"
         }),
         "contrasena": z.string().trim(),
         "rol": z.enum(['administrador', 'cliente'])
