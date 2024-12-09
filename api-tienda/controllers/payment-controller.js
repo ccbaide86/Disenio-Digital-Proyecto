@@ -150,7 +150,13 @@ export class PaymentController {
         }
         try {
             const { id: usuarioID } = GetPaymentHistorySchema.parse(req.params);
-            const query = "SELECT * FROM ordenes WHERE usuario_id = ?";
+
+            const query = `
+                SELECT o.id, o.usuario_id, o.total, o.fecha_creacion, o.estado 
+                FROM ordenes o
+                WHERE o.usuario_id = ? AND o.estado = 'pagado'
+            `;
+
             connection.query(query, [usuarioID], (error, results) => {
                 if (error) {
                     return res.status(400).json({
