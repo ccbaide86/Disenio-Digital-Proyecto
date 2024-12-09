@@ -1,32 +1,30 @@
 import connection from "../config/db.js";
-
-import axios from 'axios'; // Para las solicitudes a PixelPay
+import { PaymentSchema, GetPaymentHistorySchema } from "../schemas/payments.schema.js";
+import { z } from "zod";
+import axios from "axios";
 
 export class PaymentController {
     static async processPayment(req, res) {
-        const { user_id, cart_items, payment_method, pixelpay_details } = req.body;
-
-        if (!user_id || !cart_items || cart_items.length === 0) {
-            return res.status(400).json({
-                error: true,
-                message: "El carrito está vacío o faltan datos necesarios."
-            });
-        }
-
         try {
-            // 1. Validar el total del carrito y verificar que el usuario exista
+            const data = PaymentSchema.parse(req.body);
+
+            const { user_id, cart_items, payment_method, pixelpay_details } = data;
+
+            // Validar el total del carrito y verificar que el usuario exista
             const cartQuery = `
-                SELECT c.producto_id, c.cantidad, p.precio, p.stock
-                FROM carrito c
-                JOIN productos p ON c.producto_id = p.id
-                WHERE c.usuario_id = ?;
-            `;
-            const [cartResults] = await connection.promise().query(cartQuery, [user_id]);
+        SELECT c.producto_id, c.cantidad, p.precio, p.stock
+        FROM carrito c
+        JOIN productos p ON c.producto_id = p.id
+        WHERE c.usuario_id = ?;
+    `;
+            const [cartResults] = await connection
+                .promise()
+                .query(cartQuery, [user_id]);
 
             if (cartResults.length === 0) {
                 return res.status(400).json({
                     error: true,
-                    message: "El carrito está vacío o no se encontró el usuario."
+                    message: "El carrito está vacío o no se encontró el usuario.",
                 });
             }
 
@@ -36,111 +34,147 @@ export class PaymentController {
                 if (item.stock < item.cantidad) {
                     return res.status(400).json({
                         error: true,
-                        message: `Stock insuficiente para el producto con ID ${item.producto_id}.`
+                        message: `Stock insuficiente para el producto con ID ${item.producto_id}.`,
                     });
                 }
                 total += item.precio * item.cantidad;
                 stockUpdates.push({
                     producto_id: item.producto_id,
-                    cantidad: item.cantidad
+                    cantidad: item.cantidad,
                 });
             }
 
-            // 2. Procesar el pago con PixelPay
+            // Procesar el pago con PixelPay
             const pixelPayResponse = await axios.post(
-                'https://sandbox.pixelpay.app/api/v1/payment', // URL de sandbox de PixelPay
+                "https://sandbox.pixelpay.app/api/v1/payment",
                 {
-                    amount: total,
+                    amount: total.toFixed(2),
                     method: payment_method,
-                    ...pixelpay_details
+                    ...pixelpay_details,
                 },
                 {
                     headers: {
-                        Authorization: `Bearer YOUR_PIXELPAY_API_KEY`, // Cambia por tu clave
-                    }
+                        Authorization: `Bearer ${process.env.PIXELPAY_API_KEY}`,
+                    },
                 }
             );
 
             if (pixelPayResponse.data.status !== "success") {
                 return res.status(400).json({
                     error: true,
-                    message: "La transacción fue rechazada por PixelPay."
+                    message: `La transacción fue rechazada: ${pixelPayResponse.data.message || "Error desconocido"
+                        }.`,
                 });
             }
 
-            // 3. Registrar la orden en la tabla `ordenes`
+            const transactionId = pixelPayResponse.data.transaction_id;
+
+            // Registrar la orden en la base de datos
             const createOrderQuery = `
-                INSERT INTO ordenes (usuario_id, total, estado) VALUES (?, ?, 'pagado');
-            `;
-            const [orderResult] = await connection.promise().query(createOrderQuery, [user_id, total]);
+        INSERT INTO ordenes (usuario_id, total, estado, transaction_id) 
+        VALUES (?, ?, 'pagado', ?);
+    `;
+            const [orderResult] = await connection
+                .promise()
+                .query(createOrderQuery, [user_id, total, transactionId]);
 
             const orderId = orderResult.insertId;
 
-            // 4. Registrar detalles de la orden en la tabla `detalle_orden`
             const orderDetailsQuery = `
-                INSERT INTO detalle_orden (orden_id, producto_id, cantidad, precio)
-                VALUES (?, ?, ?, ?);
-            `;
+        INSERT INTO detalle_orden (orden_id, producto_id, cantidad, precio)
+        VALUES (?, ?, ?, ?);
+    `;
             for (const item of cartResults) {
-                await connection.promise().query(orderDetailsQuery, [
-                    orderId,
-                    item.producto_id,
-                    item.cantidad,
-                    item.precio
-                ]);
+                await connection
+                    .promise()
+                    .query(orderDetailsQuery, [
+                        orderId,
+                        item.producto_id,
+                        item.cantidad,
+                        item.precio,
+                    ]);
             }
 
-            // 5. Actualizar inventario en la tabla `productos`
+            // Actualizar inventario y limpiar el carrito
             const updateStockQuery = `
-                UPDATE productos SET stock = stock - ? WHERE id = ?;
-            `;
+        UPDATE productos SET stock = stock - ? WHERE id = ?;
+    `;
             for (const update of stockUpdates) {
-                await connection.promise().query(updateStockQuery, [update.cantidad, update.producto_id]);
+                await connection
+                    .promise()
+                    .query(updateStockQuery, [update.cantidad, update.producto_id]);
             }
 
-            // 6. Vaciar el carrito
             const clearCartQuery = `DELETE FROM carrito WHERE usuario_id = ?;`;
             await connection.promise().query(clearCartQuery, [user_id]);
 
-            // 7. Devolver la respuesta exitosa
             return res.status(200).json({
                 message: "Pago procesado exitosamente.",
                 orderId: orderId,
-                total: total
+                total: total,
+                transactionId: transactionId,
             });
-
         } catch (error) {
-            console.error(error);
+            console.error("Error procesando el pago:", error);
+
+            if (error instanceof z.ZodError) {
+                return res.status(400).json({
+                    error: true,
+                    message: "Datos de entrada inválidos.",
+                    details: error.errors,
+                });
+            }
+
+            if (error.response && error.response.data) {
+                return res.status(400).json({
+                    error: true,
+                    message: "Error al procesar el pago con PixelPay.",
+                    details: error.response.data,
+                });
+            }
+
             return res.status(500).json({
                 error: true,
-                message: "Ocurrió un error al procesar el pago.",
-                details: error.message
+                message: "Ocurrió un error interno al procesar el pago.",
+                details: error.message,
             });
         }
     }
-    static getPaymentHistory(req, res) {
-        // Implementa la logica para obtener el historial de pagos
 
-        const usuarioID = req.params.id;
-
-        const query = 'select *from pagos where usuario_id = ?';
+    static async getPaymentHistory(req, res) {
+        if (!req.params || !req.params.id) {
+            return res.status(400).json({
+                error: true,
+                message: "El parámetro `id` es obligatorio.",
+            });
+        }
         try {
+            const { id: usuarioID } = GetPaymentHistorySchema.parse(req.params);
+            const query = "SELECT * FROM ordenes WHERE usuario_id = ?";
             connection.query(query, [usuarioID], (error, results) => {
                 if (error) {
                     return res.status(400).json({
                         error: true,
-                        message: "Ocurrio un error al obtener el historial de pagos" + error,
+                        message: "Ocurrió un error al obtener el historial de pagos.",
+                        details: error.message,
                     });
                 }
-                res
-                    .header("Content-Type", "application/json")
-                    .status(200)
-                    .json(results);
+
+                return res.status(200).json(results);
             });
         } catch (error) {
-            res.status(400).json({
+            if (error instanceof z.ZodError) {
+                return res.status(400).json({
+                    error: true,
+                    message: "Parámetro inválido.",
+                    details: error.errors,
+                });
+            }
+
+            return res.status(500).json({
                 error: true,
-                message: "Ocurrio un error al obtener el historial de pagos" + error
+                message: "Ocurrió un error interno al obtener el historial de pagos.",
+                details: error.message,
             });
         }
     }
