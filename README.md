@@ -106,9 +106,12 @@ Headers:
 
 Request Body: "application/json"
 ```json
-    {
+{
         "user_id": 1,
-        "cart_items": 1,
+        "cart_items": [
+                        {"producto_id": 1, "cantidad":2},
+                        {"producto_id": 2, "cantidad":3}
+                ],
         "payment_method": "tarjeta",
         "pixelpay_details": {
             "customer_name": "Juan Perez",
@@ -116,11 +119,11 @@ Request Body: "application/json"
             "phone": "95682814",
             "card_token": "eyndvkljdfkl5s1d6v16d1v5d1vkdnjfhjdhj"
         }
-    }
+}
 ```
 
 6. GET /payments/history/:userId: Obtener historial de pagos de un usuario.
-https://disenio-digital-proyecto.onrender.com//history/1
+https://disenio-digital-proyecto.onrender.com/payments/history/1
 
 Headers:
 - **header**: authorization (Debe estar autorizado)
