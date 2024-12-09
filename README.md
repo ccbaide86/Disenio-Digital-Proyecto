@@ -56,26 +56,94 @@ npm start
 
 La API está desplegada en la plataforma Render y se puede acceder a través de la siguiente URL:
 
-- **URL**: [https://disenio-digital-proyecto.onrender.com/]
+- **URL Base**: [https://disenio-digital-proyecto.onrender.com/]
 
 -**Ejemplo de Uso**:
-1. Inicio de sesión
+1. POST /auth/register: Registro de nuevos usuarios.
+https://disenio-digital-proyecto.onrender.com/auth/register
+
+Request Body: "application/json"
+```json
+	{
+		"nombre": "Admin de Prueba",
+		"correo": "admin.prueba@example.com",
+		"contrasena": "hashed_password1",
+		"rol": "administrador"
+	}
+```
+
+2. POST /auth/login: Inicio de sesión
 https://disenio-digital-proyecto.onrender.com/auth/login
 
+Request Body: "application/json"
 ```json
-{
-    "nombre": "Admin de Prueba",
-    "contrasena": "hashed_password1"
-}
+    {
+        "nombre": "Admin de Prueba",
+        "contrasena": "hashed_password1"
+    }
 ```
 
-2. Consultar el stock de un producto específico (Las rutas de inventario, estarán disponibles solo para usuarios administradores)
+3. GET /reports/sales: Generar un reporte de ventas por rango de fechas (recibe start_date y end_date).
+https://disenio-digital-proyecto.onrender.com/reports/sales?start_date=2024-01-01&end_date=2024-12-31
 
+Headers:
+- **header**: authorization (Debe estar autorizado)
+- **value**: token  (El Token de un Usuario de administrador)
+
+4. GET /reports/inventory: Reporte de inventario actual (productos disponibles y stock bajo).
+https://disenio-digital-proyecto.onrender.com/reports/inventory
+
+Headers:
+- **header**: authorization (Debe estar autorizado)
+- **value**: token  (El Token de un Usuario de administrador)
+
+5. POST /payments/checkout: Procesar un pago (recibe user_id, cart_items y payment_method, ademas de los campos solicitados por PixelPay).
+https://disenio-digital-proyecto.onrender.com/payments/checkout
+
+Headers:
+- **header**: authorization (Debe estar autorizado)
+- **value**: token  (El Token de un Usuario de cliente)
+
+Request Body: "application/json"
+```json
+    {
+        "user_id": 1,
+        "cart_items": 1,
+        "payment_method": "tarjeta",
+        "pixelpay_details": {
+            "customer_name": "Juan Perez",
+            "email": "juanp10@example.com",
+            "phone": "95682814",
+            "card_token": "eyndvkljdfkl5s1d6v16d1v5d1vkdnjfhjdhj"
+        }
+    }
+```
+
+6. GET /payments/history/:userId: Obtener historial de pagos de un usuario.
+https://disenio-digital-proyecto.onrender.com//history/1
+
+Headers:
+- **header**: authorization (Debe estar autorizado)
+- **value**: token  (El Token de un Usuario de cliente)
+
+7. POST /inventory/restock: Agrega stock a un producto (recibe product_id y cantidad).
+https://disenio-digital-proyecto.onrender.com/inventory/restock
+
+Headers:
+- **header**: authorization (Debe estar autorizado)
+- **value**: token  (El Token de un Usuario de administrador)
+
+Request Body: "application/json"
+```json
+    {
+        "product_id": 1,
+        "cantidad": 9
+    }
+```
+
+8.  GET /inventory/:id: Consultar el stock de un producto específico.
 https://disenio-digital-proyecto.onrender.com/inventory/1
 
-```json
-{
-    "product_id": 1,
-    "cantidad": 9
-}
-```
+Headers:
+- **header**: authorization (Debe estar autorizado)
+- **value**: token  (El Token de un Usuario de administrador)
